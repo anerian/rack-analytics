@@ -8,6 +8,10 @@ module Rack
   # Pass the :printer option to pick a different result format.
   class Analytics
     BUFFER_SIZE = 5
+    LOG_DIR = '.'
+    LOGFILE_MAX_SIZE = 30 # in Kilobytes, ie 1 mb
+    LOGFILE_MAX_AGE = 1000 # in seconds, ie 1 hour
+
     MODES = %w(
       process_time
       wall_time
@@ -18,9 +22,6 @@ module Rack
       @app = app
       @profile_type = :time 
       @write_type = :file
-      if @write_type == :file
-        @analytics_data = []
-      end
     end
 
     def call(env)
@@ -36,29 +37,58 @@ module Rack
   
       # dup, otherwise we screw up the env hash for rack
       # also merge with an empty new Hash to create a real Hash and not a Mongrel::HttpParams 'hash'
-      rack_env = Hash.new.merge(env.dup)
+      @rack_env = Hash.new.merge(env.dup)
     
       # a mix of IO and Action::* classes that rails can't to_yaml
-      rack_env.delete('rack.errors')
-      rack_env.delete('rack.input')
-      rack_env.delete('action_controller.rescue.request')
-      rack_env.delete('action_controller.rescue.response')
-      rack_env.delete('rack.session')
+      @rack_env.delete('rack.errors')
+      @rack_env.delete('rack.input')
+      @rack_env.delete('action_controller.rescue.request')
+      @rack_env.delete('action_controller.rescue.response')
+      @rack_env.delete('rack.session')
+
+      data = {:time_taken => time_taken, :created_at => Time.now.to_i, :rack_env => @rack_env}
 
       if @write_type == :file
-        if should_writeout_data
-          file_write("analysis.current.log", @analytics_data.to_yaml)
-          @analytics_data = []
-        else
-          @analytics_data << {:time_taken => time_taken, :created_at => Time.now.to_i, :rack_env => rack_env}
+        filename = get_logfile_name
+        if logfile_needs_rotating?(filename)
+          filename = rotate_logfile(filename)
         end
+        file_write(filename, @analytics_data.to_yaml)
       elsif @write_type == :db
-        ActiveRecord::Base.connection.insert("insert into log_entries (time_taken, details, created_at) values (#{time_taken}, #{ActiveRecord::Base.connection.quote(rack_env)}, #{Time.now.to_i})")
+        ActiveRecord::Base.connection.insert("insert into log_entries (time_taken, details, created_at) values (#{time_taken}, #{ActiveRecord::Base.connection.quote(@rack_env)}, #{Time.now.to_i})")
       end
       app_response
      else
        @app.call(env)
      end
+    end
+
+    def rotate_logfile(filename)
+    puts "rotating logfile"
+      `mv #{filename} archived.#{filename}`
+      get_new_logfile_name
+    end
+
+    def logfile_needs_rotating?(filename)
+      # this assumes an analysis.port_number.timestamp.log layout
+      created_at = filename.split('.')[2].to_i
+      (Time.now.to_i - created_at) > LOGFILE_MAX_AGE or (::File.exists?(filename) and ::File.size(filename) > LOGFILE_MAX_SIZE)
+    end
+        
+    def get_logfile_name
+      unless filename = logfile_exists?
+        filename = get_new_logfile_name
+      end
+      filename
+    end
+
+    def get_new_logfile_name
+      "analysis.#{@rack_env['SERVER_PORT']}.#{Time.now.to_i}.log"
+    end
+
+    def logfile_exists?
+      # this assumes an analysis.port_number.timestamp.log layout
+      Dir.entries(LOG_DIR).find {|filename| filename =~ /analysis\.\d+\.\d+\.log/}
     end
 
     def should_writeout_data
@@ -79,6 +109,7 @@ module Rack
     end
 
     def file_write(filename, data)
+    puts "writing out file #{filename}"
       ::File.open(filename, 'a') {|file| file.write data}
     end
 
