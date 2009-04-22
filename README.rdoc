@@ -4,4 +4,4 @@ Description goes here.
 
 == Copyright
 
-Copyright (c) 2009 Jack Dempsey. See LICENSE for details.
+Copyright (c) 2009 Anerian LLC. See LICENSE for details.

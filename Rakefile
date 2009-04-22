@@ -6,8 +6,8 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "rack-analytics"
     gem.summary = %Q{A gem that provides rack middleware to capture analytics}
-    gem.email = "jack.dempsey@anerian.com"
-    gem.homepage = "http://github.com/jackdempsey/rack-analytics"
+    gem.email = "dev@anerian.com"
+    gem.homepage = "http://github.com/anerian/rack-analytics"
     gem.authors = ["Jack Dempsey"]
 
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings

@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jack Dempsey"]
   s.date = %q{2009-04-22}
-  s.email = %q{jack.dempsey@anerian.com}
+  s.email = %q{dev@anerian.com}
   s.extra_rdoc_files = [
     "LICENSE",
     "README.rdoc"
@@ -16,13 +16,13 @@ Gem::Specification.new do |s|
     "LICENSE",
     "README.rdoc",
     "Rakefile",
+    "VERSION.yml",
     "lib/rack-analytics.rb",
-    "lib/rack_analytics.rb",
     "test/rack_analytics_test.rb",
     "test/test_helper.rb"
   ]
   s.has_rdoc = true
-  s.homepage = %q{http://github.com/jackdempsey/rack-analytics}
+  s.homepage = %q{http://github.com/anerian/rack-analytics}
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
   s.rubygems_version = %q{1.3.2}
