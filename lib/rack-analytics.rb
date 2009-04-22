@@ -1,4 +1,3 @@
-puts "required main class here"
 require 'ruby-prof'
 require 'ruby-debug'
 
