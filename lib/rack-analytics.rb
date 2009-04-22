@@ -53,7 +53,7 @@ module Rack
         if logfile_needs_rotating?(filename)
           filename = rotate_logfile(filename)
         end
-        file_write(filename, @analytics_data.to_yaml)
+        file_write(filename, data.to_yaml)
       elsif @write_type == :db
         ActiveRecord::Base.connection.insert("insert into log_entries (time_taken, details, created_at) values (#{time_taken}, #{ActiveRecord::Base.connection.quote(@rack_env)}, #{Time.now.to_i})")
       end
@@ -89,10 +89,6 @@ module Rack
     def logfile_exists?
       # this assumes an analysis.port_number.timestamp.log layout
       Dir.entries(LOG_DIR).find {|filename| filename =~ /analysis\.\d+\.\d+\.log/}
-    end
-
-    def should_writeout_data
-      @analytics_data.size >= BUFFER_SIZE
     end
 
     def profile(env, mode)
