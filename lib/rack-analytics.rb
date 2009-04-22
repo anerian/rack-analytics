@@ -1,16 +1,23 @@
 require 'ruby-prof'
 require 'ruby-debug'
 
+$reporter = nil
+$mutex = Mutex.new
 module Rack
+  class Reporter
+    attr_accessor :logfile
+    def initialize(logfile=nil)
+      @logfile = logfile
+    end
+  end
   # Set the profile=process_time query parameter to download a
   # calltree profile of the request.
   #
   # Pass the :printer option to pick a different result format.
   class Analytics
-    BUFFER_SIZE = 5
     LOG_DIR = '.'
-    LOGFILE_MAX_SIZE = 30 # in Kilobytes, ie 1 mb
-    LOGFILE_MAX_AGE = 1000 # in seconds, ie 1 hour
+    LOGFILE_MAX_SIZE = 1024 * 500# in bytes, ie 1 mb
+    LOGFILE_MAX_AGE = 3 # in seconds, ie 1 hour
 
     MODES = %w(
       process_time
@@ -19,6 +26,7 @@ module Rack
     )
 
     def initialize(app, options = {})
+      $reporter ||= Reporter.new
       @app = app
       @profile_type = :time 
       @write_type = :file
@@ -49,11 +57,14 @@ module Rack
       data = {:time_taken => time_taken, :created_at => Time.now.to_i, :rack_env => @rack_env}
 
       if @write_type == :file
-        filename = get_logfile_name
-        if logfile_needs_rotating?(filename)
-          filename = rotate_logfile(filename)
+        $mutex.synchronize do
+          set_new_logfile unless $reporter.logfile
+          filename = $reporter.logfile
+          if logfile_needs_rotating?(filename)
+            filename = rotate_logfile(filename)
+          end
+          file_write(filename, data.to_yaml)
         end
-        file_write(filename, data.to_yaml)
       elsif @write_type == :db
         ActiveRecord::Base.connection.insert("insert into log_entries (time_taken, details, created_at) values (#{time_taken}, #{ActiveRecord::Base.connection.quote(@rack_env)}, #{Time.now.to_i})")
       end
@@ -64,9 +75,9 @@ module Rack
     end
 
     def rotate_logfile(filename)
-    puts "rotating logfile"
+      debug "rotating logfile"
       `mv #{filename} archived.#{filename}`
-      get_new_logfile_name
+      set_new_logfile
     end
 
     def logfile_needs_rotating?(filename)
@@ -75,20 +86,12 @@ module Rack
       (Time.now.to_i - created_at) > LOGFILE_MAX_AGE or (::File.exists?(filename) and ::File.size(filename) > LOGFILE_MAX_SIZE)
     end
         
-    def get_logfile_name
-      unless filename = logfile_exists?
-        filename = get_new_logfile_name
-      end
-      filename
+    def set_new_logfile
+      $reporter.logfile = get_new_logfile_name 
     end
 
     def get_new_logfile_name
       "analysis.#{@rack_env['SERVER_PORT']}.#{Time.now.to_i}.log"
-    end
-
-    def logfile_exists?
-      # this assumes an analysis.port_number.timestamp.log layout
-      Dir.entries(LOG_DIR).find {|filename| filename =~ /analysis\.\d+\.\d+\.log/}
     end
 
     def profile(env, mode)
@@ -105,7 +108,7 @@ module Rack
     end
 
     def file_write(filename, data)
-    puts "writing out file #{filename}"
+      debug "writing out file #{filename}"
       ::File.open(filename, 'a') {|file| file.write data}
     end
 
@@ -122,6 +125,10 @@ module Rack
 
     def timestamp
       "%10.6f" % Time.now.to_f
+    end
+
+    def debug(text)
+      puts text if $DEBUG
     end
   end
 end
