@@ -1,0 +1,7 @@
+= rack-analytics
+
+Description goes here.
+
+== Copyright
+
+Copyright (c) 2009 Jack Dempsey. See LICENSE for details.
