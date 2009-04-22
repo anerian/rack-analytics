@@ -6,10 +6,10 @@ require 'spec/rake/spectask'
 
 GEM = "rack-analytics"
 GEM_VERSION = "0.0.1"
-AUTHOR = "Your Name"
-EMAIL = "Your Email"
-HOMEPAGE = "http://example.com"
-SUMMARY = "A gem that provides..."
+AUTHOR = "Anerian LLC"
+EMAIL = "dev@anerian.com"
+HOMEPAGE = "http://anerian.com"
+SUMMARY = "A gem that provides rack middlware to analyze Rails apps"
 
 spec = Gem::Specification.new do |s|
   s.name = GEM
